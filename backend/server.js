@@ -5,6 +5,10 @@ import session from "express-session";
 import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
+import { getUserInfo } from "./Services/githubService";
+import {getRepoList} from"./Services/githubService";
+import { getRepoContents } from "./Services/githubService";
+import { createIssue } from "./Services/githubService";
 
 dotenv.config();
 
@@ -22,7 +26,6 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
-/******** GOOGLE STRATEGY ********/
 passport.use(
   new GoogleStrategy(
     {
@@ -42,12 +45,10 @@ app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "http://localhost:3000/login" }),
   (req, res) => {
-    res.redirect(`http://localhost:3000/success?user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    res.redirect(`http://localhost:5173/connections`);
   }
 );
 
-
-/******** GITHUB STRATEGY ********/
 passport.use(
   new GitHubStrategy(
     {
@@ -67,10 +68,34 @@ app.get(
   "/auth/github/callback",
   passport.authenticate("github", { failureRedirect: "http://localhost:3000/login" }),
   (req, res) => {
-    res.redirect(`http://localhost:3000/success?user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    res.redirect(`http://localhost:5173/connections`);
   }
 );
 
+app.post("/api/github/userInfo",async (req,res)=>{
+    const PAT=req.body.personal_access_token;
+    res.json({message:`GitHub connected with PAT: ${PAT}`});
+    const UserInfo=await getUserInfo(PAT);
+    console.log("GitHub User Info:",UserInfo);
+})
 
-/******** SERVER START ********/
-app.listen(5000, () => console.log("✅ OAuth Server running on http://localhost:5000"));
+app.post("/api/github/repos",async(req,res)=>{
+    const PAT=req.body.personal_access_token;
+    const repos=await getRepoList(PAT);
+    res.json(repos);
+})
+
+app.post("/api/github/repoContents",async(req,res)=>{
+    const {personal_access_token, owner, repo, filepath}=req.body;
+    const content=await getRepoContents(personal_access_token, owner, repo, filepath);
+    res.json(content);
+})
+
+app.post("/api/github/createIssue",async(req,res)=>{
+    const {personal_access_token, owner, repo, title, body}=req.body;
+    const issue=await createIssue(personal_access_token, owner, repo, title, body);
+    res.json(issue);
+});
+
+
+app.listen(5000, () => console.log("OAuth Server running on http://localhost:5000"));
