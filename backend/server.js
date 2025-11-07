@@ -5,14 +5,16 @@ import session from "express-session";
 import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
-import { getUserInfo } from "./Services/githubService";
-import {getRepoList} from"./Services/githubService";
-import { getRepoContents } from "./Services/githubService";
-import { createIssue } from "./Services/githubService";
+import { getUserInfo } from "./Services/githubService.js";
+import {getRepoList} from"./Services/githubService.js";
+import { getRepoContents } from "./Services/githubService.js";
+import { createIssue } from "./Services/githubService.js";
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(session({ 
   secret: process.env.SESSION_SECRET || "keyboardcat", 
@@ -74,7 +76,7 @@ app.get(
 
 app.post("/api/github/userInfo",async (req,res)=>{
     const PAT=req.body.personal_access_token;
-    res.json({message:`GitHub connected with PAT: ${PAT}`});
+    res.json({message:`GitHub connected with PAT successfully.`});
     const UserInfo=await getUserInfo(PAT);
     console.log("GitHub User Info:",UserInfo);
 })

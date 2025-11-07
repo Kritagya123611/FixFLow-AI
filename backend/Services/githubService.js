@@ -22,15 +22,25 @@ export async function getRepoList(personalAccessToken){
   }))
 }
 
-export async function getRepoContents(personalAccessToken, owner, repo, filepath){
-    const octokit=await createOctokitClient(personalAccessToken);
-    const data=await octokit.rest.repos.getContent({
-        owner,
-        repo,
-        path: filepath
-    }); 
-    return data;
+export async function getRepoContents(personalAccessToken, owner, repo, filepath) {
+  const octokit = await createOctokitClient(personalAccessToken);
+
+  const { data } = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path: filepath,
+  });
+
+  const decoded = Buffer.from(data.content, data.encoding).toString("utf-8");
+
+  return {
+    name: data.name,
+    path: data.path,
+    html_url: data.html_url,
+    content: decoded,
+  };
 }
+
 
 export async function createIssue(personalAccessToken, owner, repo, title, body){
     const octokit=await createOctokitClient(personalAccessToken);
