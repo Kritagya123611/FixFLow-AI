@@ -9,6 +9,7 @@ import { getUserInfo } from "./Services/githubService.js";
 import {getRepoList} from"./Services/githubService.js";
 import { getRepoContents } from "./Services/githubService.js";
 import { createIssue } from "./Services/githubService.js";
+import { supabase } from "./supabaseClient.js";
 
 dotenv.config();
 
@@ -101,6 +102,37 @@ app.post("/api/github/createIssue",async(req,res)=>{
     const issue=await createIssue(personal_access_token, owner, repo, title, body);
     res.json(issue);
 });
+
+app.post("/api/supabase/saveConnection", async (req, res) => {
+  try {
+    const { pat, repo_owner, repo_name } = req.body;
+
+    if (!pat || !repo_owner || !repo_name) {
+      return res.status(400).json({ error: "Missing data fields" });
+    }
+
+    const { data, error } = await supabase
+      .from("github_connections")
+      .insert([
+        {
+          pat: pat,
+          repo_owner: repo_owner,
+          repo_name: repo_name,
+        },
+      ]);
+
+    if (error) {
+      console.error("Supabase insert error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ message: "Connection saved!", data });
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).json({ error: "Server Failed" });
+  }
+});
+
 
 
 app.listen(5000, () => console.log("OAuth Server running on http://localhost:5000"));

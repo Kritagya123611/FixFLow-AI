@@ -45,19 +45,44 @@ export default function Connections() {
     }
   };
 
-  const handleSubmit = (e: any) => {
+const handleSubmit = async (e: any) => {
   e.preventDefault();
 
   if (selectedIntegration === "github") {
     if (!selectedRepo) return alert("Please select a repository!");
-    const repoObj = JSON.parse(selectedRepo);
-    alert(
-      `GitHub Connected Successfully!\nRepo: ${repoObj.owner}/${repoObj.name}`
-    );
+
+    let repoObj: any;
+    try {
+      repoObj = JSON.parse(selectedRepo);
+    } catch (err) {
+      console.error("Failed to parse selectedRepo", err);
+      return alert("Invalid repository selected.");
+    }
+
+    const body = {
+      pat: pat,
+      repo_owner: repoObj.owner,
+      repo_name: repoObj.name,
+    };
+
+    const res = await fetch("http://localhost:5000/api/supabase/saveConnection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("GitHub Connected Successfully & Saved!");
+    } else {
+      alert("Failed: " + data.error);
+    }
   }
 
   setShowModal(false);
 };
+
 
 
   return (
