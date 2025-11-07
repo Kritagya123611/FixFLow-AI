@@ -4,11 +4,18 @@ export default function Connections() {
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-type Integration = "github" | "prometheus" | "slack";
+  const [pat, setPat] = useState("");
+  const [repos, setRepos] = useState<any[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [loadingRepos, setLoadingRepos] = useState(false);
 
-const handleCheckbox = (integration: Integration): void => {
+  type Integration = "github" | "prometheus" | "slack";
+
+  const handleCheckbox = (integration: Integration): void => {
     setSelectedIntegration(integration);
-};
+    setRepos([]);
+    setSelectedRepo(null);
+  };
 
   const handleContinue = () => {
     if (!selectedIntegration) {
@@ -17,12 +24,41 @@ const handleCheckbox = (integration: Integration): void => {
     }
     setShowModal(true);
   };
+  const fetchRepos = async () => {
+    try {
+      setLoadingRepos(true);
+      const res = await fetch("http://localhost:5000/api/github/repos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personal_access_token: pat }),
+      });
 
-  const handleSubmit = (e: { preventDefault: () => void; }) => {
-    e.preventDefault();
-    alert(`Successfully connected: ${selectedIntegration}`);
-    setShowModal(false);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setRepos(data);
+    } catch (err) {
+      alert("Failed to fetch repo list. Please check your PAT.");
+      console.error(err);
+    } finally {
+      setLoadingRepos(false);
+    }
   };
+
+  const handleSubmit = (e: any) => {
+  e.preventDefault();
+
+  if (selectedIntegration === "github") {
+    if (!selectedRepo) return alert("Please select a repository!");
+    const repoObj = JSON.parse(selectedRepo);
+    alert(
+      `GitHub Connected Successfully!\nRepo: ${repoObj.owner}/${repoObj.name}`
+    );
+  }
+
+  setShowModal(false);
+};
+
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 px-4">
@@ -31,6 +67,7 @@ const handleCheckbox = (integration: Integration): void => {
         <h2 className="text-lg text-gray-700 mb-6">
           Where do you want FixFlow to start helping?
         </h2>
+
         <div className="flex flex-col gap-4 text-left">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
@@ -41,7 +78,6 @@ const handleCheckbox = (integration: Integration): void => {
             />
             CI/CD Failures (GitHub Actions)
           </label>
-
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -51,7 +87,6 @@ const handleCheckbox = (integration: Integration): void => {
             />
             Observability Alerts (Prometheus)
           </label>
-
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -61,6 +96,7 @@ const handleCheckbox = (integration: Integration): void => {
             />
             ChatOps (Slack / MS Teams)
           </label>
+
         </div>
 
         <button
@@ -78,52 +114,50 @@ const handleCheckbox = (integration: Integration): void => {
               </h3>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                
                 {selectedIntegration === "github" && (
                   <>
-                    <input
-                        name="pat"
-                        type="text"
-                        placeholder="Personal Access Token"
+                    {!repos.length ? (
+                      <>
+                        <input
+                          type="password"
+                          placeholder="GitHub Personal Access Token"
+                          className="w-full border px-3 py-2 rounded"
+                          value={pat}
+                          onChange={(e) => setPat(e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={fetchRepos}
+                          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
+                        >
+                          {loadingRepos ? "Fetching Repos..." : "Fetch Repositories"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold">Select Repository:</p>
+                       <select
                         className="w-full border px-3 py-2 rounded"
-                        required
-                    />
-                  </>
-                )}
-                {selectedIntegration === "prometheus" && (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Prometheus Endpoint URL"
-                      className="w-full border px-3 py-2 rounded"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Read-Only Auth Token"
-                      className="w-full border px-3 py-2 rounded"
-                    />
+                        onChange={(e) => setSelectedRepo(e.target.value)}
+                      >
+                        <option value="">Choose Repo</option>
+                        {repos.map((repo) => (
+                          <option
+                            key={repo.name}
+                            value={JSON.stringify(repo)} // now safe
+                          >
+                            {repo.owner}/{repo.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      </>
+                    )}
                   </>
                 )}
 
-                {selectedIntegration === "slack" && (
-                  <>
-                    <button
-                      type="button"
-                      className="bg-green-600 text-white px-4 py-2 rounded w-full"
-                    >
-                      Add to Slack
-                    </button>
-                    <input
-                      type="text"
-                      placeholder="Default Alert Channel Name"
-                      className="w-full border px-3 py-2 rounded"
-                      required
-                    />
-                  </>
-                )}
-
-                <div className="flex justify-end gap-3">
+                <div className="flex justify-end gap-3 pt-3">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
@@ -131,17 +165,26 @@ const handleCheckbox = (integration: Integration): void => {
                   >
                     Cancel
                   </button>
+
                   <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md"
+                    disabled={selectedIntegration === "github" && !selectedRepo}
+                    className={`px-4 py-2 rounded-md text-white ${
+                      selectedIntegration === "github" && !selectedRepo
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                   >
                     Connect
                   </button>
+
                 </div>
+
               </form>
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

@@ -10,17 +10,17 @@ export async function getUserInfo(personalAccessToken){
     return data;
 }
 
-export async function getRepoList(personalAccessToken){
-    const octokit=await createOctokitClient(personalAccessToken);
-    const repos = await octokit.paginate(octokit.rest.repos.listForAuthenticatedUser, {
-    per_page: 100,
+export async function getRepoList(PAT) {
+  const octokit = await createOctokitClient(PAT);
+  const response = await octokit.rest.repos.listForAuthenticatedUser({
+    per_page: 100
   });
-  return repos.map(repo=>({
+  return response.data.map(repo => ({
     name: repo.name,
-    owner: repo.owner.login,
-    private: repo.private,
-  }))
+    owner: repo.owner.login,  
+  }));
 }
+
 
 export async function getRepoContents(personalAccessToken, owner, repo, filepath) {
   const octokit = await createOctokitClient(personalAccessToken);
