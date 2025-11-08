@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { use, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
+import "./WebHookSetup";
 
 export default function Connections() {
+  const navigate = useNavigate();
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -75,6 +78,8 @@ const handleSubmit = async (e: any) => {
 
     if (res.ok) {
       alert("GitHub Connected Successfully & Saved!");
+      localStorage.setItem("selectedRepo", JSON.stringify(repoObj));
+      navigate("/webhooksetup");
     } else {
       alert("Failed: " + data.error);
     }

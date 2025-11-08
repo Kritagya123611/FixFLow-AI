@@ -171,11 +171,25 @@ async function fetchCrispLogs(owner, repo, runId, token) {
   }
 }
 
+let lastWebhookReceived = null;
+
 app.post("/api/github/webhook", async (req, res) => {
   const eventType = req.headers["x-github-event"];
   const payload = req.body;
 
   console.log(`Event → ${eventType}`);
+
+  if (eventType === "push") {
+    lastWebhookReceived = {
+      type: "push",
+      branch: payload.ref,
+      commitId: payload.after.substring(0, 7),
+      repo: payload.repository.full_name,
+      time: new Date().toISOString(),
+    };
+
+    console.log("Push event received:", lastWebhookReceived);
+  }
 
   if (eventType === "workflow_run" && payload.action === "completed") {
     const { conclusion, id: runId } = payload.workflow_run;
@@ -190,10 +204,29 @@ app.post("/api/github/webhook", async (req, res) => {
       const logs = await fetchCrispLogs(owner, repo, runId, process.env.GITHUB_TOKEN);
       console.log("Final Logs →", logs);
     }
+
+    lastWebhookReceived = {
+      type: "workflow_run",
+      status: conclusion,
+      repo: payload.repository.full_name,
+      time: new Date().toISOString(),
+    };
   }
 
-  res.status(200).send("OK");
+  res.status(200).send("OK Webhook received");
 });
+
+app.get("/api/github/webhook/status", (req, res) => {
+  if (!lastWebhookReceived) {
+    return res.json({ connected: false });
+  }
+
+  res.json({
+    connected: true,
+    lastEvent: lastWebhookReceived,
+  });
+});
+
 
 app.listen(5000, () =>
   console.log("Server running → http://localhost:5000")
