@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { getUserInfo, getRepoList, getRepoContents, createIssue } from "./Services/githubService.js";
+import CreateJiraTicket from "./Services/JiraService.js";
 import { supabase } from "./supabaseClient.js";
 import { Octokit } from "@octokit/rest";
 
@@ -191,7 +192,7 @@ app.post("/api/github/webhook", async (req, res) => {
     console.log("Push event received:", lastWebhookReceived);
   }
 
-  if (eventType === "workflow_run" && payload.action === "completed") {
+  if (eventType === "workflow_run" && payload.workflow_run?.conclusion) {
     const { conclusion, id: runId } = payload.workflow_run;
     const owner = payload.repository.owner.login;
     const repo = payload.repository.name;
@@ -207,6 +208,13 @@ app.post("/api/github/webhook", async (req, res) => {
       console.log("Categorized Severity →", severity);
       if(severity==="high"){
         console.log("High severity issue detected. Jira ticket creation is required.");
+        const issueDetails={
+          title:`Critical CI Failure: ${logs.failedStep}`,
+          description:`The CI workflow failed at step **${logs.failedStep}**.\n\n**Root Cause:** ${logs.rootCause}\n\n**Sample Errors:**\n${logs.sampleErrors.map(err=>`- ${err}`).join("\n")}\n\n*This issue was created automatically by the CI monitoring system.*`,
+          severity:severity,
+        }
+        const jiraTicket=await CreateJiraTicket(issueDetails);
+        console.log("Jira Ticket Created →", jiraTicket);
       }
       else if(severity==="medium"){
         console.log("Creating GitHub issue for medium severity issue.");

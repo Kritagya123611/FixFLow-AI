@@ -44,7 +44,7 @@ export async function getRepoContents(personalAccessToken, owner, repo, filepath
 
 export async function createIssue(personalAccessToken, owner, repo, title, body){
     const octokit=await createOctokitClient(personalAccessToken);
-    const resonse=await octokit.issues.create({
+    const response=await octokit.issues.create({
         owner,
         repo,
         title,
