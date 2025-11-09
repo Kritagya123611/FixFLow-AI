@@ -1,32 +1,29 @@
-import React, { use, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
-import "./WebHookSetup";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FaGithub, FaSlack } from "react-icons/fa";
+import { MdOutlineMonitorHeart } from "react-icons/md";
 
 export default function Connections() {
   const navigate = useNavigate();
-  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+  const [selectedIntegration, setSelectedIntegration] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   const [pat, setPat] = useState("");
-  const [repos, setRepos] = useState<any[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [repos, setRepos] = useState([]);
+  const [selectedRepo, setSelectedRepo] = useState(null);
   const [loadingRepos, setLoadingRepos] = useState(false);
 
-  type Integration = "github" | "prometheus" | "slack";
-
-  const handleCheckbox = (integration: Integration): void => {
+  const handleCheckbox = (integration) => {
     setSelectedIntegration(integration);
     setRepos([]);
     setSelectedRepo(null);
   };
 
   const handleContinue = () => {
-    if (!selectedIntegration) {
-      alert("Please select one integration first before continuing.");
-      return;
-    }
+    if (!selectedIntegration) return alert("Select one integration to continue.");
     setShowModal(true);
   };
+
   const fetchRepos = async () => {
     try {
       setLoadingRepos(true);
@@ -35,186 +32,185 @@ export default function Connections() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ personal_access_token: pat }),
       });
-
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
       setRepos(data);
-    } catch (err) {
-      alert("Failed to fetch repo list. Please check your PAT.");
-      console.error(err);
+    } catch {
+      alert("Failed to fetch repositories. Check your token.");
     } finally {
       setLoadingRepos(false);
     }
   };
 
-const handleSubmit = async (e: any) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (selectedIntegration === "github" && !selectedRepo)
+      return alert("Please select a repository");
 
-  if (selectedIntegration === "github") {
-    if (!selectedRepo) return alert("Please select a repository!");
-
-    let repoObj: any;
-    try {
-      repoObj = JSON.parse(selectedRepo);
-    } catch (err) {
-      console.error("Failed to parse selectedRepo", err);
-      return alert("Invalid repository selected.");
-    }
-
-    const body = {
-      pat: pat,
-      repo_owner: repoObj.owner,
-      repo_name: repoObj.name,
-    };
-
+    const repoObj = JSON.parse(selectedRepo);
     const res = await fetch("http://localhost:5000/api/supabase/saveConnection", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        pat,
+        repo_owner: repoObj.owner,
+        repo_name: repoObj.name,
+      }),
     });
 
     const data = await res.json();
-
     if (res.ok) {
-      alert("GitHub Connected Successfully & Saved!");
+      alert("Connected Successfully!");
       localStorage.setItem("selectedRepo", JSON.stringify(repoObj));
       navigate("/webhooksetup");
-    } else {
-      alert("Failed: " + data.error);
-    }
-  }
+    } else alert("Failed: " + data.error);
 
-  setShowModal(false);
-};
-
-
+    setShowModal(false);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100 px-4">
-      <div className="bg-white shadow-lg rounded-lg p-8 w-full max-w-lg text-center">
-        <h1 className="text-2xl font-bold mb-4">Manage Your Connections</h1>
-        <h2 className="text-lg text-gray-700 mb-6">
-          Where do you want FixFlow to start helping?
-        </h2>
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center p-6">
+      <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-10 w-full max-w-xl">
+        <h1 className="text-3xl font-semibold text-gray-900 text-center">
+          Integrations
+        </h1>
+        <p className="text-gray-600 text-center mt-1 mb-8">
+          Select where FixFlow should listen for alerts
+        </p>
 
-        <div className="flex flex-col gap-4 text-left">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectedIntegration === "github"}
-              onChange={() => handleCheckbox("github")}
-              className="w-5 h-5"
-            />
-            CI/CD Failures (GitHub Actions)
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectedIntegration === "prometheus"}
-              onChange={() => handleCheckbox("prometheus")}
-              className="w-5 h-5"
-            />
-            Observability Alerts (Prometheus)
-          </label>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={selectedIntegration === "slack"}
-              onChange={() => handleCheckbox("slack")}
-              className="w-5 h-5"
-            />
-            ChatOps (Slack / MS Teams)
-          </label>
-
+        {/* ✅ Integration Options */}
+        <div className="grid gap-4">
+          {[
+            {
+              key: "github",
+              label: "CI/CD Failures (GitHub Actions)",
+              icon: <FaGithub className="text-xl" />,
+            },
+            {
+              key: "prometheus",
+              label: "Observability Alerts (Prometheus)",
+              icon: <MdOutlineMonitorHeart className="text-xl" />,
+            },
+            {
+              key: "slack",
+              label: "ChatOps (Slack / Teams)",
+              icon: <FaSlack className="text-xl" />,
+            },
+          ].map(({ key, label, icon }) => (
+            <label
+              key={key}
+              className={`flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition
+                ${
+                  selectedIntegration === key
+                    ? "border-blue-600 bg-blue-50"
+                    : "hover:bg-gray-100"
+                }`}
+            >
+              <input
+                type="checkbox"
+                checked={selectedIntegration === key}
+                onChange={() => handleCheckbox(key)}
+                className="w-5 h-5"
+              />
+              {icon}
+              <span className="font-medium text-gray-800">{label}</span>
+            </label>
+          ))}
         </div>
 
+        {/* ✅ Continue Button */}
         <button
-          className="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg w-full transition"
+          className={`mt-8 w-full px-6 py-3 rounded-lg text-white transition
+            ${
+              selectedIntegration
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}
           onClick={handleContinue}
+          disabled={!selectedIntegration}
         >
           Continue
         </button>
 
+        {/* ✅ Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 flex justify-center items-center px-4">
-            <div className="bg-white rounded-lg p-6 shadow-lg w-full max-w-md">
-              <h3 className="text-xl font-bold mb-4">
+          <div className="fixed inset-0 bg-black/40 flex justify-center items-center p-4">
+            <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-md">
+              <h3 className="text-xl font-bold mb-6">
                 Configure {selectedIntegration?.toUpperCase()}
               </h3>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {selectedIntegration === "github" && (
-                  <>
-                    {!repos.length ? (
-                      <>
-                        <input
-                          type="password"
-                          placeholder="GitHub Personal Access Token"
-                          className="w-full border px-3 py-2 rounded"
-                          value={pat}
-                          onChange={(e) => setPat(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={fetchRepos}
-                          className="bg-blue-600 text-white px-4 py-2 rounded w-full"
-                        >
-                          {loadingRepos ? "Fetching Repos..." : "Fetch Repositories"}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <p className="font-semibold">Select Repository:</p>
-                       <select
+              {/* GitHub Config */}
+              {selectedIntegration === "github" && (
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                  {!repos.length ? (
+                    <>
+                      <input
+                        type="password"
+                        placeholder="GitHub Personal Access Token"
+                        className="w-full border px-3 py-2 rounded"
+                        value={pat}
+                        onChange={(e) => setPat(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
+                        onClick={fetchRepos}
+                      >
+                        {loadingRepos ? "Fetching..." : "Fetch Repositories"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <label className="font-medium text-gray-700">
+                        Choose a repository:
+                      </label>
+                      <select
                         className="w-full border px-3 py-2 rounded"
                         onChange={(e) => setSelectedRepo(e.target.value)}
                       >
-                        <option value="">Choose Repo</option>
+                        <option value="">Select Repo</option>
                         {repos.map((repo) => (
                           <option
                             key={repo.name}
-                            value={JSON.stringify(repo)} // now safe
+                            value={JSON.stringify(repo)}
                           >
                             {repo.owner}/{repo.name}
                           </option>
                         ))}
                       </select>
+                    </>
+                  )}
 
-                      </>
-                    )}
-                  </>
-                )}
+                  {/* Modal Actions */}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="px-4 py-2 border rounded"
+                    >
+                      Cancel
+                    </button>
 
-                <div className="flex justify-end gap-3 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 border rounded-md"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={selectedIntegration === "github" && !selectedRepo}
-                    className={`px-4 py-2 rounded-md text-white ${
-                      selectedIntegration === "github" && !selectedRepo
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    }`}
-                  >
-                    Connect
-                  </button>
-
-                </div>
-
-              </form>
+                    <button
+                      type="submit"
+                      disabled={!selectedRepo}
+                      className={`px-4 py-2 text-white rounded ${
+                        selectedRepo
+                          ? "bg-blue-600 hover:bg-blue-700"
+                          : "bg-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

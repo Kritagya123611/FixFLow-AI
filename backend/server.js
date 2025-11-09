@@ -203,6 +203,21 @@ app.post("/api/github/webhook", async (req, res) => {
       console.log("Fetching crisp CI logs…");
       const logs = await fetchCrispLogs(owner, repo, runId, process.env.GITHUB_TOKEN);
       console.log("Final Logs →", logs);
+      const severity=await categorizeIssue(logs);
+      console.log("Categorized Severity →", severity);
+      if(severity==="high"){
+        console.log("High severity issue detected. Jira ticket creation is required.");
+      }
+      else if(severity==="medium"){
+        console.log("Creating GitHub issue for medium severity issue.");
+        const issueTitle=`CI Failure: ${logs.failedStep}`;
+        const issueBody=`The CI workflow failed at step **${logs.failedStep}**.\n\n**Root Cause:** ${logs.rootCause}\n\n**Sample Errors:**\n${logs.sampleErrors.map(err=>`- ${err}`).join("\n")}\n\n*This issue was created automatically by the CI monitoring system.*`;
+        const issue=await createIssue(process.env.GITHUB_TOKEN, owner, repo, issueTitle, issueBody);
+        console.log("GitHub Issue Created →", issue.html_url);
+      }
+      else{
+        console.log("Low severity issue detected. Alerting engineering team via PagerDuty.");
+      }
     }
 
     lastWebhookReceived = {
@@ -211,6 +226,20 @@ app.post("/api/github/webhook", async (req, res) => {
       repo: payload.repository.full_name,
       time: new Date().toISOString(),
     };
+  }
+
+  async function categorizeIssue(logs){
+    const text = logs.sampleErrors.join("\n").toLowerCase();
+     if (text.includes("panic") || text.includes("undefined") || text.includes("compilation")) {
+        return "high"; 
+        //Jira ticket create hoga 
+    }
+    if (text.includes("fail") || text.includes("test")) {
+      return "medium"; 
+      //github issue create hoga
+    }
+    return "low"; 
+    // engineer page hoga pagerDuty se
   }
 
   res.status(200).send("OK Webhook received");

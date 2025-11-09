@@ -24,7 +24,7 @@ const verifyWebhook = async () => {
     const text = await res.text();
 
     if (!text.startsWith("{")) {
-      console.error("❌ HTML instead of JSON:", text);
+      console.error("HTML instead of JSON:", text);
       alert("Backend not reachable via ngrok. Please restart ngrok with correct flags.");
       return;
     }
@@ -46,7 +46,7 @@ const verifyWebhook = async () => {
         {repo ? (
           <>
             <p className="text-gray-700">
-              You're connecting <span className="font-semibold">{repo.owner}/{repo.name}</span> to FixFlow 🚀
+              You're connecting <span className="font-semibold">{repo.owner}/{repo.name}</span> to FixFlow 
             </p>
 
             <div className="border rounded-lg p-4 bg-gray-50">
@@ -62,7 +62,7 @@ const verifyWebhook = async () => {
                 <li>Paste the Webhook URL</li>
                 <li>Set <strong>Content-Type → application/json</strong></li>
                 <li>Select events → <strong>Push + Pull Request + Workflow Runs</strong></li>
-                <li>Click <strong>Add Webhook ✅</strong></li>
+                <li>Click <strong>Add Webhook </strong></li>
               </ol>
             </div>
 
@@ -70,7 +70,7 @@ const verifyWebhook = async () => {
               className="w-full bg-green-600 text-white py-2 rounded-md hover:bg-green-700 transition"
               onClick={verifyWebhook}
             >
-              ✅ Verify Webhook
+              Verify Webhook
             </button>
 
             {status && (
@@ -86,7 +86,7 @@ const verifyWebhook = async () => {
                   </>
                 ) : (
                   <p className="text-red-500 font-semibold">
-                    ❌ No webhook event received yet. Trigger a push or PR!
+                    No webhook event received yet. Trigger a push or PR!
                   </p>
                 )}
               </div>
