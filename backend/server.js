@@ -7,6 +7,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { getUserInfo, getRepoList, getRepoContents, createIssue } from "./Services/githubService.js";
 import CreateJiraTicket from "./Services/JiraService.js";
+import NotifyPagerDuty from "./Services/PagerDutyService.js";
 import { supabase } from "./supabaseClient.js";
 import { Octokit } from "@octokit/rest";
 
@@ -213,18 +214,29 @@ app.post("/api/github/webhook", async (req, res) => {
           description:`The CI workflow failed at step **${logs.failedStep}**.\n\n**Root Cause:** ${logs.rootCause}\n\n**Sample Errors:**\n${logs.sampleErrors.map(err=>`- ${err}`).join("\n")}\n\n*This issue was created automatically by the CI monitoring system.*`,
           severity:severity,
         }
-        const jiraTicket=await CreateJiraTicket(issueDetails);
+        //const jiraTicket=await CreateJiraTicket(issueDetails);
+        //working above line commented to avoid jira ticket creation during tests
         console.log("Jira Ticket Created →", jiraTicket);
       }
       else if(severity==="medium"){
         console.log("Creating GitHub issue for medium severity issue.");
-        const issueTitle=`CI Failure: ${logs.failedStep}`;
+        /* const issueTitle=`CI Failure: ${logs.failedStep}`;
         const issueBody=`The CI workflow failed at step **${logs.failedStep}**.\n\n**Root Cause:** ${logs.rootCause}\n\n**Sample Errors:**\n${logs.sampleErrors.map(err=>`- ${err}`).join("\n")}\n\n*This issue was created automatically by the CI monitoring system.*`;
         const issue=await createIssue(process.env.GITHUB_TOKEN, owner, repo, issueTitle, issueBody);
-        console.log("GitHub Issue Created →", issue.html_url);
+        console.log("GitHub Issue Created →", issue.html_url); */
+        //working above lines commented to avoid github issue creation during tests
       }
       else{
         console.log("Low severity issue detected. Alerting engineering team via PagerDuty.");
+        const alertDetails = {
+          title: `Low Severity CI Issue: ${logs.failedStep}`,
+          info: {
+            rootCause: logs.rootCause,
+            sampleErrors: logs.sampleErrors.join("\n"),
+          }
+        };
+        await NotifyPagerDuty(alertDetails);
+        console.log("PagerDuty Alert Sent.");
       }
     }
 
@@ -263,6 +275,10 @@ app.get("/api/github/webhook/status", (req, res) => {
     lastEvent: lastWebhookReceived,
   });
 });
+
+app.post("/api/promethius/webhook",(req,res)=>{
+  
+})
 
 
 app.listen(5000, () =>
