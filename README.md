@@ -53,6 +53,10 @@ A TypeScript-native interface to track:
 
 ##  Architecture
 
+<img width="1276" height="741" alt="Screenshot from 2026-05-04 21-12-51" src="https://github.com/user-attachments/assets/2722997c-da8b-468e-957d-e239ab0487fd" />
+
+
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     EXTERNAL SOURCES                     │
@@ -174,7 +178,7 @@ FixFlow handles the rest.
 
 Built by **Kritagya Jha** — Backend & Systems Engineer
 
-[![GitHub](https://img.shields.io/badge/GitHub-yourusername-181717?style=for-the-badge&logo=github)](https://github.com/Kritagya123611)
+[![GitHub](https://img.shields.io/badge/GitHub-Kritagya123611-181717?style=for-the-badge&logo=github)](https://github.com/Kritagya123611)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/kritagya-jha-260945319/)
 
 ---
